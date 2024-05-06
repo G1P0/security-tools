@@ -1,0 +1,91 @@
+stages:
+  - gitleaks
+  - semgrep
+  - spotbugs
+  - phpcs
+  - checkov
+  - owasp-dependency-check
+
+# Secret Detects
+gitleaks:
+  stage: gitleaks
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /gitleaks/
+      when: never
+    - if: $CI_COMMIT_BRANCH
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/pre-build/gitleaks.yml'
+
+# SAST main
+semgrep:
+  stage: semgrep
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /semgrep/
+      when: never
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - '**/*.py'
+        - '**/*.js'
+        - '**/*.jsx'
+        - '**/*.ts'
+        - '**/*.tsx'
+        - '**/*.c'
+        - '**/*.go'
+        - '**/*.java'
+        - '**/*.cs'
+        - '**/*.html'
+        - '**/*.scala'
+        - '**/*.sc'
+        - '**/*.php'
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/pre-build/semgrep.yml'
+
+# SAST for php
+phpcs:
+  stage: phpcs
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /phpcs/
+      when: never
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - '**/*.php'
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/pre-build/phpcs.yml'
+
+# SAST for IaC files (Terraform, CloudFormation, Azure Resource Manager, Serverless framework, Helm charts, Kubernetes, Docker)
+checkov:
+  stage: checkov
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /checkov/
+      when: never
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - '**/*.yml'
+        - '**/*.yaml'
+        - '**/*.json'
+        - '**/*.template'
+        - '**/*.tf'      
+        - '**/serverless.yml'
+        - '**/serverless.yaml'
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/pre-build/checkov.yml'
+
+# Source SCA
+owasp-dependency-check:
+  stage: owasp-dependency-check
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /owasp-dependency-check/
+      when: never
+    - if: $CI_COMMIT_BRANCH|
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/pre-build/owasp-dependency-check.yml'

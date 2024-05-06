@@ -1,0 +1,24 @@
+stages:
+  - pre-build
+  - test
+
+pre-build:
+  stage: pre-build
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: 'pre-build.yml'
+
+# build:   - dev contour 
+
+test:
+  stage: test
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: 'test.yml'
+      variables: 
+        TARGET_URL: 172.19.0.11    # add target url for DAST analyze
+
+variables:
+  SAST_EXCLUDED_ANALYZERS: semgrep, owasp-dependency-check

@@ -1,0 +1,49 @@
+variables: 
+  DD_SCAN: "Checkov Scan"
+  DD_ENG: "pre-build"
+  DD_REPORT: "checkov-report.xml"
+
+stages:
+  - checkov
+  - import
+
+checkov:
+  stage: checkov
+  image:
+    name: bridgecrew/checkov:latest
+    entrypoint:
+      - '/usr/bin/env'
+      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+  script:
+    - checkov --soft-fail -d . -o json | tee $DD_REPORT
+    - cat $DD_REPORT
+  artifacts:
+    paths:
+      - "$DD_REPORT"
+  allow_failure: true
+
+import:
+  services:
+    - bash:devel-alpine3.19
+  image: curlimages/curl
+  stage: import
+  script: 
+    - |
+      if test -f "$DD_REPORT"; then
+      echo -e "File $DD_REPORT exist"
+
+      curl -X POST "${DD_URL}/api/v2/import-scan/" \
+        -H "accept:application/json" \
+        -H "Authorization:Token ${DD_API_TOKEN}" \
+        -H "Content-Type:multipart/form-data" \
+        -F "product_name=$CI_PROJECT_PATH" \
+        -F "verified=false" \
+        -F "active=false" \
+        -F "minimum_severity=Info" \
+        -F "file=@$DD_REPORT" \
+        -F "scan_type=$DD_SCAN" \
+        -F "engagement_name=$DD_ENG" > dd_res.txt
+        cat dd_res.txt
+      else
+        echo "I haven't found this file: $DD_REPORT"
+      fi

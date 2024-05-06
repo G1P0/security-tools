@@ -1,0 +1,47 @@
+variables: 
+  DD_SCAN: "Gitleaks Scan"
+  DD_ENG: "pre-build"
+  DD_REPORT: "gitleaks-report.json"
+
+stages:
+  - gitleaks
+  - import
+
+gitleaks:
+  stage: gitleaks
+  image:
+    name: zricethezav/gitleaks 
+    entrypoint: [""]
+  script: 
+    - gitleaks detect -v --report-path=$DD_REPORT --report-format=json
+  artifacts:
+    paths: [$DD_REPORT]
+    when: always
+    expire_in: 24 hrs 
+  allow_failure: true
+
+import:
+  services:
+    - bash:devel-alpine3.19
+  image: curlimages/curl
+  stage: import
+  script: 
+    - |
+      if test -f "$DD_REPORT"; then
+      echo -e "File $DD_REPORT exist"
+
+      curl -X POST "${DD_URL}/api/v2/import-scan/" \
+        -H "accept:application/json" \
+        -H "Authorization:Token ${DD_API_TOKEN}" \
+        -H "Content-Type:multipart/form-data" \
+        -F "product_name=$CI_PROJECT_PATH" \
+        -F "verified=false" \
+        -F "active=false" \
+        -F "minimum_severity=Info" \
+        -F "file=@$DD_REPORT" \
+        -F "scan_type=$DD_SCAN" \
+        -F "engagement_name=$DD_ENG" > dd_res.txt
+        cat dd_res.txt
+      else
+        echo "I haven't found this file: $DD_REPORT"
+      fi

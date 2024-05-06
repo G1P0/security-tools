@@ -1,0 +1,15 @@
+stages:
+  - owasp-zap
+
+# dast full scan
+owasp-zap:
+  stage: owasp-zap
+  rules:
+    - if: $TOOL_EXCLUDED_ANALYZERS =~ /owasp-zap/
+      when: never
+    - if: $CI_COMMIT_BRANCH
+  trigger:
+    include:
+      - project: '$SEC_REPO_PATH'
+        file: '/test/owasp-zap.yml'
+

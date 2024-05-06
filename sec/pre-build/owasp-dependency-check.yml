@@ -1,0 +1,45 @@
+variables: 
+  DD_SCAN: "Dependency Check Scan"
+  DD_ENG: "pre-build"
+  DD_REPORT: "dependencycheck-report.xml"
+
+stages:
+  - owasp-dependency
+  - import
+
+owasp-dependency-check:
+  stage: owasp-dependency
+  image:
+    name: owasp/dependency-check:latest
+    entrypoint: [""]
+  script:
+    - /usr/share/dependency-check/bin/dependency-check.sh --nvdApiKey ${NVD_API_KEY} --scan . --format "XML" --project ${CI_PROJECT_NAME} --out $DD_REPORT || true
+    - cat $DD_REPORT
+  artifacts:
+    paths:
+      - $DD_REPORT
+
+import:
+  services:
+    - bash:devel-alpine3.19
+  image: curlimages/curl
+  stage: import
+  script: 
+    - |
+      if test -f "$DD_REPORT"; then
+      echo -e "File $DD_REPORT exist"
+
+      curl -X POST "${DD_URL}/api/v2/import-scan/" \
+        -H "Authorization:Token ${DD_API_TOKEN}" \
+        -H "Content-Type:multipart/form-data" \
+        -F "product_name=$CI_PROJECT_PATH" \
+        -F "verified=false" \
+        -F "active=false" \
+        -F "minimum_severity=Info" \
+        -F "file=@$DD_REPORT" \
+        -F "scan_type=$DD_SCAN" \
+        -F "engagement_name=$DD_ENG" > dd_res.txt
+        cat dd_res.txt
+      else
+        echo "I haven't found this file: $DD_REPORT"
+      fi
